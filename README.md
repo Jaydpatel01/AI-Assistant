@@ -2,6 +2,8 @@
 
 An open-source AI-powered meeting assistant that provides real-time transcription and intelligent responses.
 
+> **⚠️ LEGAL DISCLAIMER:** This software is for **personal educational use only**. Recording conversations without consent may be illegal in your jurisdiction. You are solely responsible for ensuring lawful use. The authors are NOT liable for any misuse. See [LICENSE](LICENSE) for full terms.
+
 ---
 
 ## How It Works
@@ -14,8 +16,8 @@ An open-source AI-powered meeting assistant that provides real-time transcriptio
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │   ┌──────────────┐      ┌──────────────┐      ┌──────────────┐       │
-│   │  MICROPHONE  │ ───► │    VOSK      │ ───► │   OVERLAY    │       │
-│   │   (Audio)    │      │  (Local AI)  │      │     UI       │       │
+│   │DESKTOP AUDIO │ ───► │    VOSK      │ ───► │   OVERLAY    │       │
+│   │(Interviewer) │      │  (Local AI)  │      │     UI       │       │
 │   └──────────────┘      └──────────────┘      └──────┬───────┘       │
 │                                                      │               │
 │   ┌──────────────┐                                   │               │
@@ -46,7 +48,7 @@ An open-source AI-powered meeting assistant that provides real-time transcriptio
 
 | Data | Where Stored | When Deleted |
 |------|--------------|--------------|
-| Audio from microphone | Memory only | When you stop recording |
+| Desktop audio (system sound) | Memory only | When you stop recording |
 | Voice transcription | Memory only | When app closes |
 | Screenshots | Memory only | After text extraction |
 | App settings | Local config | When you delete them |
@@ -87,13 +89,31 @@ This happens **automatically** - you don't need to do anything.
 
 ---
 
+## Platform Support
+
+| Platform | Status |
+|----------|--------|
+| **Windows** | ✅ Fully tested and supported |
+| **macOS** | ⚠️ Experimental (should work, not fully tested) |
+| **Linux** | ⚠️ Experimental (should work, not fully tested) |
+
+**Tips for macOS/Linux users:**
+- Use `python3` instead of `python` if the setup fails
+- Run `chmod +x .venv/bin/python` if you get permission errors
+- For audio capture issues, ensure your system allows screen/audio recording permissions
+- Build with `npm run build:mac` or `npm run build:linux`
+
+> **Note:** Full macOS and Linux support coming soon! If you encounter issues, please open a GitHub issue.
+
+---
+
 ## Features
 
-### 1. Speech-to-Text (Vosk - 100% Local)
-- Runs entirely on your computer
-- No internet required for transcription
+### 1. Desktop Audio Capture & Transcription (Vosk - 100% Local)
+- Captures system audio (interviewer's voice from speakers)
+- Runs entirely on your computer - no internet required
 - Audio never leaves your machine
-- Supports English (other models available)
+- Real-time transcription with Vosk speech recognition
 
 ### 2. AI Chat (Gemini - Cloud)
 - Ask questions about your meeting/interview
@@ -119,7 +139,7 @@ This happens **automatically** - you don't need to do anything.
 - Python 3.8+
 - Gemini API key (free at https://aistudio.google.com/apikey)
 
-### Setup
+### Setup (Development)
 
 ```bash
 # 1. Clone the repository
@@ -140,6 +160,18 @@ cp .env.example .env
 npm start
 ```
 
+### Building for Production
+
+```bash
+# Build the distributable app (this takes some time - be patient!)
+npm run build
+```
+
+After building:
+1. **App location:** `dist/win-unpacked/AI Assistant.exe`
+2. **Installer:** `dist/AI Assistant-1.0.0.exe` (Ignore this and run AI Assistant.exe)
+3. **Important:** Copy your `.env` file to `dist/win-unpacked/` folder
+
 ---
 
 ## Usage
@@ -147,20 +179,25 @@ npm start
 ### Quick Start Workflow
 
 1. **Launch**: Run `npm start`
-2. **Start Meeting**: Click "Start Meeting" button
-3. **Talk**: Speak into your microphone (transcription starts)
-4. **Ask Questions**: Type questions in chat, get AI answers
-5. **End**: Click "End Meeting" or close app (data auto-wipes)
+2. **Capture Audio**: Click "Capture Audio" button to start capturing desktop/system audio
+3. **Listen**: The app transcribes what plays through your speakers (interviewer's voice)
+4. **Get Answers**: Click "Answer" or type questions to get AI-powered responses
+5. **End**: Click "Stop Capture" or close app (data auto-wipes)
+
+### Tips
+
+- **Move the Overlay**: Click and hold anywhere on the top toolbar (not on buttons), then drag to reposition the overlay window.
+- **Use Both Modes**: For best results, use "Capture Audio" for real-time transcription AND "Use Screen" for visual context. They work independently - the AI uses whichever is most relevant based on your current mode.
 
 ---
 
 ### Detailed Usage Guide
 
-#### Starting a Meeting
-1. Click **"Start Meeting"** to begin transcription
-2. Speak clearly into your microphone
-3. Transcript appears in the left panel in real-time
-4. Both your voice and system audio are captured
+#### Starting Audio Capture
+1. Click **"Capture Audio"** to begin transcription
+2. The app captures desktop audio (what plays through your speakers)
+3. Interviewer's voice is transcribed in real-time
+4. Use this during video calls to capture what the interviewer says
 
 #### Asking Questions to AI
 1. Type your question in the chat input at the bottom

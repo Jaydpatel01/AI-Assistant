@@ -18,29 +18,61 @@ let voskProcess = null;
 let voskProcessStarting = false;
 
 /**
- * Get Python executable path (cross-platform)
+ * Get Python executable path (cross-platform, works in dev and production)
  */
 function getPythonExecutable() {
   const fs = require('fs');
+  const { execSync } = require('child_process');
 
-  // Check common locations
-  const possiblePaths = [
-    path.join(__dirname, '../.venv/Scripts/python.exe'),  // Windows venv
-    path.join(__dirname, '../.venv/bin/python'),          // Linux/macOS venv
-    'python',                                              // System Python
-    'python3'                                              // Linux/macOS
-  ];
+  // In production, check for bundled Python or system Python
+  const isPackaged = app.isPackaged;
+
+  // Check various locations in priority order
+  const possiblePaths = [];
+
+  if (isPackaged) {
+    // Production mode - check bundled venv in resources folder
+    possiblePaths.push(
+      path.join(process.resourcesPath, '.venv/Scripts/python.exe'),  // Windows bundled venv
+      path.join(process.resourcesPath, '.venv/bin/python')           // Linux/macOS bundled venv
+    );
+  } else {
+    // Development mode - check local venv first
+    possiblePaths.push(
+      path.join(__dirname, '../.venv/Scripts/python.exe'),  // Windows venv
+      path.join(__dirname, '../.venv/bin/python')           // Linux/macOS venv
+    );
+  }
+
+  // Always check system Python as fallback
+  possiblePaths.push('python', 'python3');
 
   for (const pythonPath of possiblePaths) {
     try {
-      if (fs.existsSync(pythonPath)) {
-        return pythonPath;
+      // For full paths, check if file exists
+      if (path.isAbsolute(pythonPath) || pythonPath.includes('/') || pythonPath.includes('\\')) {
+        if (fs.existsSync(pythonPath)) {
+          return pythonPath;
+        }
+      } else {
+        // For 'python' or 'python3', check if it's in PATH
+        try {
+          const cmd = process.platform === 'win32' ? `where ${pythonPath}` : `which ${pythonPath}`;
+          const result = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+          if (result.trim()) {
+            return pythonPath;  // Return the command name, spawn will find it
+          }
+        } catch (e) {
+          // Command not found, continue to next option
+        }
       }
     } catch (e) {
       continue;
     }
   }
 
+  // Last resort - just return 'python' and hope it works
+  console.warn('⚠️ Could not find Python executable, trying "python" anyway');
   return process.platform === 'win32' ? 'python' : 'python3';
 }
 
@@ -59,14 +91,36 @@ async function startVoskProcess() {
   return new Promise((resolve) => {
     const { spawn } = require('child_process');
     const pythonExe = getPythonExecutable();
-    const scriptPath = path.join(__dirname, '../vosk_server.py');
+
+    // Get correct paths for dev vs production
+    let scriptPath, workingDir, modelsDir;
+    if (app.isPackaged) {
+      // Production: files are in resources/app.asar.unpacked or resources
+      workingDir = path.join(process.resourcesPath, 'app.asar.unpacked');
+      scriptPath = path.join(workingDir, 'vosk_server.py');
+      modelsDir = path.join(process.resourcesPath, 'models');
+
+      // If unpacked doesn't exist, try app.asar (though Python can't run from asar)
+      if (!require('fs').existsSync(scriptPath)) {
+        // Fall back to extraResources location
+        workingDir = process.resourcesPath;
+        scriptPath = path.join(workingDir, 'vosk_server.py');
+      }
+    } else {
+      // Development mode
+      workingDir = path.join(__dirname, '..');
+      scriptPath = path.join(workingDir, 'vosk_server.py');
+      modelsDir = path.join(workingDir, 'models');
+    }
 
     console.log(`📡 Python: ${pythonExe}`);
     console.log(`📡 Script: ${scriptPath}`);
+    console.log(`📡 Working Dir: ${workingDir}`);
 
     try {
       voskProcess = spawn(pythonExe, [scriptPath], {
-        cwd: path.join(__dirname, '..'),
+        cwd: workingDir,
+        env: { ...process.env, MODELS_DIR: modelsDir },
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true
       });

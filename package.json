@@ -19,11 +19,11 @@
     "transcription",
     "open-source"
   ],
-  "author": "",
+  "author": "Jay Patel",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/Jaydpatel01/AI-Assistant"
   },
   "devDependencies": {
     "electron": "^39.2.1",
@@ -39,6 +39,9 @@
     "productName": "AI Assistant",
     "artifactName": "${productName}-${version}.${ext}",
     "asar": true,
+    "asarUnpack": [
+      "vosk_server.py"
+    ],
     "files": [
       "src/**/*",
       "package.json",
@@ -48,6 +51,15 @@
       {
         "from": "models",
         "to": "models"
+      },
+      {
+        "from": ".venv",
+        "to": ".venv",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc"
+        ]
       }
     ],
     "win": {
@@ -59,7 +71,8 @@
           ]
         }
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,

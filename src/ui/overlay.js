@@ -490,28 +490,47 @@ async function captureScreen() {
 
 async function getQuickAnswer() {
   // Build context from either transcript or screen
+  // Priority: Active audio transcript > Screen capture (when audio inactive)
   let context = '';
   let contextSource = '';
 
-  // Get transcript context if meeting is ACTIVE
+  const transcriptText = appState.transcript.map(t => `${t.speaker}: ${t.text}`).join('\n').trim();
+  const hasTranscript = transcriptText.length > 0;
+  const hasScreen = appState.screenContext && appState.screenContext.trim().length > 0;
+
+  console.log(`📋 Context check: Meeting active=${appState.isMeetingActive}, hasTranscript=${hasTranscript}, hasScreen=${hasScreen}`);
+
+  // Decision logic:
+  // 1. If audio capture is ACTIVE → use transcript (priority), fallback to screen if no transcript yet
+  // 2. If audio capture is OFF → use screen context
   if (appState.isMeetingActive) {
-    const transcriptText = appState.transcript.map(t => `${t.speaker}: ${t.text}`).join('\n');
-    if (transcriptText.trim()) {
+    // Audio mode active - prioritize transcript
+    if (hasTranscript) {
       context = transcriptText;
       contextSource = 'meeting transcript';
+    } else if (hasScreen) {
+      // Audio active but no transcript yet - use screen as fallback
+      context = appState.screenContext;
+      contextSource = 'screen capture (audio has no transcript yet)';
+    }
+  } else {
+    // Audio mode OFF - use screen context
+    if (hasScreen) {
+      context = appState.screenContext;
+      contextSource = 'screen capture';
+    } else if (hasTranscript) {
+      // Audio off but has old transcript - use it as fallback
+      context = transcriptText;
+      contextSource = 'previous transcript';
     }
   }
 
-  // Use screen context if no transcript context (or meeting not active)
-  if (!context && appState.screenContext) {
-    context = appState.screenContext;
-    contextSource = 'screen capture';
-  }
-
   if (!context) {
-    addSystemMessage('No context available. Use "Start Meeting" for transcription or "Use Screen" to capture screen first.');
+    addSystemMessage('No context available. Click "Capture Audio" to transcribe speech or "Use Screen" to capture screen content.');
     return;
   }
+
+  console.log(`📋 Using context: ${contextSource} (${context.length} chars)`);
 
   // Check rate limit
   const cooldown = getCooldownRemaining();
