@@ -1,0 +1,82 @@
+{
+  "name": "ai-assistant",
+  "version": "1.0.0",
+  "description": "Open source AI meeting assistant with local speech recognition",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "dev": "electron . --dev",
+    "setup": "node scripts/setup.js",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": [
+    "meeting",
+    "assistant",
+    "ai",
+    "transcription",
+    "open-source"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "devDependencies": {
+    "electron": "^39.2.1",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.1.3",
+    "adm-zip": "^0.5.10",
+    "electron-store": "^8.1.0"
+  },
+  "build": {
+    "appId": "com.ai-assistant.app",
+    "productName": "AI Assistant",
+    "artifactName": "${productName}-${version}.${ext}",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "package.json",
+      "vosk_server.py"
+    ],
+    "extraResources": [
+      {
+        "from": "models",
+        "to": "models"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AI Assistant"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
+      "category": "Utility"
+    }
+  }
+}

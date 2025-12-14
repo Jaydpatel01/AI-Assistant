@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Environment & Secrets (CRITICAL - never commit)
+.env
+.env.local
+.env.production
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# Build outputs
+dist/
+out/
+*.asar
+
+# IDE & Cache
+.cache/
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Models (users download separately)
+models/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+
+# Debug
+debug/
+*.dump

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Assistant</title>
+  <link rel="stylesheet" href="overlay.css">
+</head>
+
+<body>
+  <div id="overlay-container">
+    <!-- Floating Toolbar (Main Controls) -->
+    <div id="main-toolbar" class="draggable">
+      <button id="useScreenBtn" class="toolbar-btn">
+        <span class="label">Use Screen</span>
+      </button>
+      <button id="startMeetingBtn" class="toolbar-btn">
+        <span class="label">Capture Audio</span>
+      </button>
+      <button id="stealthBtn" class="toolbar-btn">
+        <span class="label">Stealth</span>
+      </button>
+
+      <button id="toggleChatBtn" class="toolbar-btn-icon">^</button>
+      <div class="toolbar-spacer"></div>
+      <button id="minimizeBtn" class="toolbar-btn-icon">-</button>
+      <button id="closeBtn" class="toolbar-btn-icon">x</button>
+    </div>
+
+    <!-- Main Content Area -->
+    <div id="main-content">
+      <!-- Chat Panel (Main View) -->
+      <div id="chat-panel" class="panel active">
+        <div id="chatMessages"></div>
+
+        <!-- Quick Actions -->
+        <div id="quick-actions">
+          <button id="answerBtn" class="quick-action-btn">
+            <span class="qa-text">Answer</span>
+          </button>
+        </div>
+
+        <!-- Chat Input -->
+        <div id="input-container">
+          <textarea id="chatInput" placeholder="Ask anything..."></textarea>
+          <button id="sendBtn">Send</button>
+        </div>
+      </div>
+
+      <!-- Live Transcription Panel -->
+      <div id="transcript-panel" class="panel">
+        <div class="panel-header">
+          <h3>Live Transcription</h3>
+        </div>
+        <div id="transcriptContent">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load overlay script only -->
+  <script src="overlay.js"></script>
+</body>
+
+</html>
