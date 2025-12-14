@@ -9,13 +9,25 @@ class AIService {
     this.client = null;
     this.model = null;
 
-    // Rate limiting - Gemini free tier: 15 RPM
+    // Rate limiting - Gemini free tier
     this.lastRequestTime = 0;
-    this.minRequestInterval = 4000; // 4 seconds between requests (safe for 15 RPM)
+    this.minRequestInterval = 4000; // 4 seconds between requests
     this.requestQueue = [];
     this.isProcessingQueue = false;
 
     this.initializeClient();
+  }
+
+  /**
+   * Reload configuration and reinitialize client
+   * Call this when user changes the API key
+   */
+  reloadConfig() {
+    console.log('🔄 Reloading AI configuration...');
+    this.config = this.loadConfig();
+    this.lastRequestTime = 0; // Reset rate limiting for new key
+    this.initializeClient();
+    console.log('✅ AI configuration reloaded');
   }
 
   /**
@@ -110,7 +122,7 @@ class AIService {
   /**
    * Send a query to the AI
    * @param {string} prompt - The user's question
-   * @param {string} context - Optional context (transcript, screen text)
+   * @param {string} context - Optional context (screen text)
    * @returns {Promise<string>} - AI response
    */
   async query(prompt, context = '') {

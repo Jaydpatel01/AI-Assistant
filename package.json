@@ -1,12 +1,11 @@
 {
   "name": "ai-assistant",
   "version": "1.0.0",
-  "description": "Open source AI meeting assistant with local speech recognition",
+  "description": "Open source AI assistant with screen capture and OCR",
   "main": "src/main.js",
   "scripts": {
     "start": "electron . --no-sandbox",
     "dev": "electron . --dev",
-    "setup": "node scripts/setup.js",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
@@ -39,28 +38,9 @@
     "productName": "AI Assistant",
     "artifactName": "${productName}-${version}.${ext}",
     "asar": true,
-    "asarUnpack": [
-      "vosk_server.py"
-    ],
     "files": [
       "src/**/*",
-      "package.json",
-      "vosk_server.py"
-    ],
-    "extraResources": [
-      {
-        "from": "models",
-        "to": "models"
-      },
-      {
-        "from": ".venv",
-        "to": ".venv",
-        "filter": [
-          "**/*",
-          "!**/__pycache__/**",
-          "!**/*.pyc"
-        ]
-      }
+      "package.json"
     ],
     "win": {
       "target": [

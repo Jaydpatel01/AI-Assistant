@@ -26,9 +26,6 @@ console.log('🚀 overlay.js script execution started (logging enabled)');
 // ============================================
 
 const appState = {
-  isRecording: false,
-  isMeetingActive: false,
-  transcript: [],
   chatHistory: [],
   screenContext: '',
   isScreenCapturing: false
@@ -44,239 +41,11 @@ const elements = {
   sendBtn: null,
   useScreenBtn: null,
   answerBtn: null,
-  startMeetingBtn: null,
   stealthBtn: null,
   minimizeBtn: null,
   closeBtn: null,
-  toggleChatBtn: null,
-  transcriptContent: null
+  toggleChatBtn: null
 };
-
-// ============================================
-// VOSK CLIENT (Local Speech Recognition)
-// ============================================
-
-let voskSocket = null;
-let voskConnected = false;
-let voskReconnectAttempts = 0;
-const maxVoskReconnectAttempts = 3;
-
-async function connectToVosk() {
-  try {
-    voskSocket = new WebSocket('ws://localhost:2700');
-
-    voskSocket.onopen = () => {
-      console.log('✅ Connected to Vosk server');
-      voskConnected = true;
-      voskReconnectAttempts = 0;
-      updateMeetingButton();
-      // Notify user on first successful connection
-      if (elements.chatMessages) {
-        addSystemMessage('Speech recognition ready!');
-      }
-    };
-
-    voskSocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.text && data.text.trim()) {
-          addToTranscript('You', data.text.trim());
-        }
-      } catch (e) {
-        console.error('Vosk message parse error:', e);
-      }
-    };
-
-    voskSocket.onclose = () => {
-      console.log('Vosk connection closed');
-      voskConnected = false;
-      updateMeetingButton();
-
-      // Reconnect with limits
-      voskReconnectAttempts++;
-      if (voskReconnectAttempts <= maxVoskReconnectAttempts) {
-        setTimeout(connectToVosk, 3000);
-      } else if (elements.chatMessages) {
-        addSystemMessage('Speech recognition unavailable. Make sure Vosk is set up correctly (see INSTALLATION.md)');
-      }
-    };
-
-    voskSocket.onerror = (error) => {
-      console.error('Vosk connection error:', error);
-      if (voskReconnectAttempts >= maxVoskReconnectAttempts && elements.chatMessages) {
-        addSystemMessage('Could not connect to speech recognition. You can still use manual input and screenshots.');
-      }
-    };
-
-  } catch (error) {
-    console.error('Failed to connect to Vosk:', error);
-    if (elements.chatMessages) {
-      addSystemMessage('Speech recognition not available. You can still type questions or use screenshots.');
-    }
-  }
-}
-
-// ============================================
-// AUDIO RECORDING
-// ============================================
-
-let mediaRecorder = null;
-let audioStream = null;
-let audioContext = null;
-
-async function startRecording() {
-  console.log('🎤 startRecording called');
-  try {
-    // Get desktop audio source via IPC (since desktopCapturer is not available in renderer)
-    // const { desktopCapturer } = require('electron'); // This fails in renderer
-
-    console.log('🎤 Requesting sources via IPC...');
-    const sources = await ipcRenderer.invoke('get-screen-sources');
-
-    console.log('Available screen sources:', sources.map(s => `${s.name} (${s.id})`));
-
-    if (!sources || sources.length === 0) {
-      addSystemMessage('No audio sources available.');
-      return;
-    }
-
-    // Use the first screen source (auto-select, no picker dialog)
-    const screenSource = sources[0];
-    console.log(`🎤 Attempting to capture audio from source: ${screenSource.name} (${screenSource.id})`);
-
-    // Capture desktop audio (system audio - what plays through speakers)
-    const constraints = {
-      audio: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: screenSource.id
-        }
-      },
-      video: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: screenSource.id,
-          minWidth: 1,
-          maxWidth: 1,
-          minHeight: 1,
-          maxHeight: 1
-        }
-      }
-    };
-
-    try {
-      audioStream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('✅ Desktop audio stream captured successfully');
-    } catch (err) {
-      console.warn('⚠️ Specific source capture failed, trying default system audio...', err);
-      // Fallback: Try with 'system' as source id or just basic desktop
-      audioStream = await navigator.mediaDevices.getUserMedia({
-        audio: true, // Try default system audio device loopback if available
-        video: false
-      });
-    }
-
-    // We only need the audio track
-    const audioTrack = audioStream.getAudioTracks()[0];
-    if (!audioTrack) {
-      console.warn('⚠️ No audio track found in captured stream!');
-      addSystemMessage('Warning: No audio detected from screen. Make sure system audio is playing.');
-    } else {
-      console.log(`✅ Audio track found: ${audioTrack.label}, Enabled: ${audioTrack.enabled}, Muted: ${audioTrack.muted}`);
-      audioTrack.onmute = () => console.warn('⚠️ Audio track muted by system');
-      audioTrack.onunmute = () => console.log('✅ Audio track unmuted');
-    }
-
-    // Stop video tracks to save resources (but keep audio)
-    const videoTracks = audioStream.getVideoTracks();
-    videoTracks.forEach(track => track.stop());
-
-    // Create audio context for processing at 16kHz for Vosk
-    audioContext = new AudioContext({ sampleRate: 16000 });
-    // Use the stream that definitely has the audio track
-    const source = audioContext.createMediaStreamSource(audioStream);
-    const processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-    processor.onaudioprocess = (event) => {
-      if (voskSocket && voskSocket.readyState === WebSocket.OPEN) {
-        const inputData = event.inputBuffer.getChannelData(0);
-
-        // Debug: Check signal level (RMS) every ~100 frames
-        if (Math.random() < 0.01) {
-          let sum = 0;
-          for (let i = 0; i < inputData.length; i++) {
-            sum += inputData[i] * inputData[i];
-          }
-          const rms = Math.sqrt(sum / inputData.length);
-          if (rms > 0.01) console.log(`🔊 Audio Signal RMS: ${rms.toFixed(4)}`);
-        }
-
-        // Convert to 16-bit PCM
-        const pcmData = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
-        }
-        voskSocket.send(pcmData.buffer);
-      }
-    };
-
-    source.connect(processor);
-    processor.connect(audioContext.destination);
-
-    appState.isRecording = true;
-    console.log('🔊 Desktop audio recording started');
-    addSystemMessage('Capturing desktop audio! Interviewer speech will be transcribed.');
-
-  } catch (error) {
-    console.error('Failed to start desktop audio capture:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
-
-    // Provide specific error messages
-    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-      addSystemMessage('Desktop audio capture denied. Please allow screen sharing when prompted.');
-    } else if (error.message && error.message.includes('audio')) {
-      addSystemMessage('System audio not available. Make sure audio is playing through your speakers.');
-    } else {
-      addSystemMessage(`Could not capture desktop audio: ${error.message || 'Unknown error'}`);
-    }
-  }
-}
-
-function stopRecording() {
-  if (audioStream) {
-    audioStream.getTracks().forEach(track => track.stop());
-    audioStream = null;
-  }
-  if (audioContext) {
-    audioContext.close();
-    audioContext = null;
-  }
-  appState.isRecording = false;
-  console.log('🔊 Desktop audio recording stopped');
-}
-
-// ============================================
-// TRANSCRIPT HANDLING
-// ============================================
-
-function addToTranscript(speaker, text) {
-  const timestamp = new Date().toLocaleTimeString();
-  appState.transcript.push({ speaker, text, timestamp });
-
-  // Update transcript view
-  if (elements.transcriptContent) {
-    const entry = document.createElement('div');
-    entry.className = 'transcript-entry';
-    entry.innerHTML = `<span class="speaker">${speaker}:</span> ${text}`;
-    elements.transcriptContent.appendChild(entry);
-    elements.transcriptContent.scrollTop = elements.transcriptContent.scrollHeight;
-  }
-
-  console.log(`[${speaker}] ${text}`);
-}
 
 // ============================================
 // AI CHAT
@@ -317,15 +86,10 @@ async function sendMessage() {
     }
   }
 
-  // Build context from transcript and screen
+  // Build context from screen capture
   let context = '';
-  if (appState.transcript.length > 0) {
-    const recentTranscript = appState.transcript.slice(-10)
-      .map(t => `${t.speaker}: ${t.text}`).join('\n');
-    context += `Recent conversation:\n${recentTranscript}\n\n`;
-  }
   if (appState.screenContext) {
-    context += `Screen content:\n${appState.screenContext}\n\n`;
+    context = `Screen content:\n${appState.screenContext}\n\n`;
   }
 
   try {
@@ -485,50 +249,22 @@ async function captureScreen() {
 }
 
 // ============================================
-// QUICK ANSWER (Uses transcript or screen context)
+// QUICK ANSWER (Uses screen context)
 // ============================================
 
 async function getQuickAnswer() {
-  // Build context from either transcript or screen
-  // Priority: Active audio transcript > Screen capture (when audio inactive)
-  let context = '';
-  let contextSource = '';
-
-  const transcriptText = appState.transcript.map(t => `${t.speaker}: ${t.text}`).join('\n').trim();
-  const hasTranscript = transcriptText.length > 0;
+  // Use screen context only (audio capture removed)
   const hasScreen = appState.screenContext && appState.screenContext.trim().length > 0;
 
-  console.log(`📋 Context check: Meeting active=${appState.isMeetingActive}, hasTranscript=${hasTranscript}, hasScreen=${hasScreen}`);
+  console.log(`📋 Context check: hasScreen=${hasScreen}`);
 
-  // Decision logic:
-  // 1. If audio capture is ACTIVE → use transcript (priority), fallback to screen if no transcript yet
-  // 2. If audio capture is OFF → use screen context
-  if (appState.isMeetingActive) {
-    // Audio mode active - prioritize transcript
-    if (hasTranscript) {
-      context = transcriptText;
-      contextSource = 'meeting transcript';
-    } else if (hasScreen) {
-      // Audio active but no transcript yet - use screen as fallback
-      context = appState.screenContext;
-      contextSource = 'screen capture (audio has no transcript yet)';
-    }
-  } else {
-    // Audio mode OFF - use screen context
-    if (hasScreen) {
-      context = appState.screenContext;
-      contextSource = 'screen capture';
-    } else if (hasTranscript) {
-      // Audio off but has old transcript - use it as fallback
-      context = transcriptText;
-      contextSource = 'previous transcript';
-    }
-  }
-
-  if (!context) {
-    addSystemMessage('No context available. Click "Capture Audio" to transcribe speech or "Use Screen" to capture screen content.');
+  if (!hasScreen) {
+    addSystemMessage('No context available. Click "Use Screen" to capture screen content first.');
     return;
   }
+
+  const context = appState.screenContext;
+  const contextSource = 'screen capture';
 
   console.log(`📋 Using context: ${contextSource} (${context.length} chars)`);
 
@@ -587,58 +323,6 @@ Provide a direct, actionable answer or response suggestion.`;
       addChatMessage('system', `Error: ${errorMsg || 'Unknown error'}`);
     }
   }
-}
-
-// ============================================
-// MEETING TOGGLE
-// ============================================
-
-function updateMeetingButton() {
-  if (!elements.startMeetingBtn) return;
-
-  if (appState.isMeetingActive) {
-    elements.startMeetingBtn.classList.add('active');
-    elements.startMeetingBtn.innerHTML = '<span class="label">Stop Capture</span>';
-  } else {
-    elements.startMeetingBtn.classList.remove('active');
-    elements.startMeetingBtn.innerHTML = '<span class="label">Capture Audio</span>';
-  }
-}
-
-// ============================================
-// MEETING TOGGLE
-// ============================================
-
-async function toggleMeeting() {
-  console.log('🔘 Toggle meeting clicked. Current state:', appState.isMeetingActive);
-
-  if (appState.isMeetingActive) {
-    // End meeting
-    stopRecording();
-    appState.isMeetingActive = false;
-    addSystemMessage('Meeting ended. Transcription stopped.');
-  } else {
-    // Start meeting
-    try {
-      appState.isMeetingActive = true;
-      appState.transcript = [];
-
-      // Clear transcript view
-      if (elements.transcriptContent) {
-        elements.transcriptContent.innerHTML = '';
-      }
-
-      console.log('🎤 Calling startRecording...');
-      await startRecording();
-      addSystemMessage('Capturing desktop audio! Interviewer speech will be transcribed.');
-    } catch (error) {
-      console.error('❌ Error in toggleMeeting:', error);
-      appState.isMeetingActive = false;
-      addSystemMessage('Error starting meeting: ' + error.message);
-    }
-  }
-
-  updateMeetingButton();
 }
 
 // ============================================
@@ -747,15 +431,12 @@ document.addEventListener('DOMContentLoaded', () => {
   elements.sendBtn = document.getElementById('sendBtn');
   elements.useScreenBtn = document.getElementById('useScreenBtn');
   elements.answerBtn = document.getElementById('answerBtn');
-  elements.startMeetingBtn = document.getElementById('startMeetingBtn');
   elements.stealthBtn = document.getElementById('stealthBtn');
   elements.minimizeBtn = document.getElementById('minimizeBtn');
   elements.closeBtn = document.getElementById('closeBtn');
   elements.toggleChatBtn = document.getElementById('toggleChatBtn');
-  elements.transcriptContent = document.getElementById('transcriptContent');
 
   console.log('✅ DOM Elements loaded:', {
-    startMeetingBtn: !!elements.startMeetingBtn,
     useScreenBtn: !!elements.useScreenBtn,
     answerBtn: !!elements.answerBtn,
     chatInput: !!elements.chatInput
@@ -765,7 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
   elements.sendBtn?.addEventListener('click', sendMessage);
   elements.useScreenBtn?.addEventListener('click', captureScreen);
   elements.answerBtn?.addEventListener('click', getQuickAnswer);
-  elements.startMeetingBtn?.addEventListener('click', toggleMeeting);
   elements.stealthBtn?.addEventListener('click', toggleStealth);
   elements.minimizeBtn?.addEventListener('click', minimizeWindow);
   elements.closeBtn?.addEventListener('click', closeWindow);
@@ -782,11 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize drag
   initializeDrag();
 
-  // Connect to Vosk
-  connectToVosk();
-
   // Welcome message
-  addSystemMessage('Ready! Click "Capture Audio" to transcribe desktop audio (interviewer), or use "Use Screen" for visual content.');
+  addSystemMessage('Ready! Use "Use Screen" to capture visual content and get AI-powered answers.');
 
   console.log('🎯 AI Assistant loaded');
 });

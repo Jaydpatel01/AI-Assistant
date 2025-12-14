@@ -6,40 +6,35 @@
 
 ## What You Get Now (Free & Open Source)
 
-**Audio & Transcription**
-- Desktop audio capture - hear what's playing through your speakers
-- Local Vosk speech recognition - 100% offline, private transcription
-- Real-time transcript display
+**Screen Capture & OCR**
+- Capture your screen with one click
+- AI-powered text extraction via Gemini Vision
+- Use screen content as context for AI answers
 
 **AI Intelligence**  
 - Google Gemini integration for AI-powered answers
-- Context-aware responses based on your transcript
+- Context-aware responses based on your screen
 - Automatic PII masking before sending to cloud
 
-**Screen Capture**
-- Manual screenshot with one click
-- OCR text extraction via Gemini Vision
-- Use screen content as AI context
-
 **Privacy & Security**
-- All audio stays on your machine
 - Session data auto-wipes on close
 - No logs, no history saved
+- Your API key, your control
 
 ---
 
 ## What's Coming in Premium
+
+**Desktop Audio Capture & Transcription**
+- Capture system audio (interviewer's voice from speakers)
+- Local Vosk speech recognition - 100% offline
+- Real-time transcription with speaker identification
 
 **Specialized AI Modes**
 - Interview mode - tailored for technical, behavioral, and HR interviews
 - Meeting mode - smart summaries and action item tracking
 - Sales mode - objection handling and closing assistance
 - Custom personas for your specific use case
-
-**Advanced Audio**
-- Microphone + desktop audio simultaneously
-- Speaker identification - know who said what
-- Gemini Live streaming for instant responses
 
 **Smart Automation**
 - Auto-answer mode - AI responds when it detects questions

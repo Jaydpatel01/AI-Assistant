@@ -1,8 +1,8 @@
 # AI Assistant
 
-An open-source AI-powered meeting assistant that provides real-time transcription and intelligent responses.
+An open-source AI-powered assistant that provides intelligent answers using screen capture and OCR.
 
-> **⚠️ LEGAL DISCLAIMER:** This software is for **personal educational use only**. Recording conversations without consent may be illegal in your jurisdiction. You are solely responsible for ensuring lawful use. The authors are NOT liable for any misuse. See [LICENSE](LICENSE) for full terms.
+> **⚠️ LEGAL DISCLAIMER:** This software is for **personal educational use only**. You are solely responsible for ensuring lawful use. The authors are NOT liable for any misuse. See [LICENSE](LICENSE) for full terms.
 
 ---
 
@@ -15,25 +15,21 @@ An open-source AI-powered meeting assistant that provides real-time transcriptio
 │                         YOUR COMPUTER (LOCAL)                        │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│   ┌──────────────┐      ┌──────────────┐      ┌──────────────┐       │
-│   │DESKTOP AUDIO │ ───► │    VOSK      │ ───► │   OVERLAY    │       │
-│   │(Interviewer) │      │  (Local AI)  │      │     UI       │       │
-│   └──────────────┘      └──────────────┘      └──────┬───────┘       │
+│   ┌──────────────┐                           ┌──────────────┐        │
+│   │    SCREEN    │ ────── OCR & Text ──────► │   OVERLAY    │        │
+│   │  (Screenshot)│       Extraction          │     UI       │        │
+│   └──────────────┘                           └──────┬───────┘        │
 │                                                      │               │
-│   ┌──────────────┐                                   │               │
-│   │    SCREEN    │ ─────────────────────────────────►│               │
-│   │  (Screenshot)│                                   │               │
-│   └──────────────┘                                   │               │
 │                                                      ▼               │
 └───────────────────────────────────────────────────────┬──────────────┘
                                                         │
                                                         │ (Your question +
-                                                        │  context sent)
+                                                        │  screen context)
                                                         ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                       GOOGLE GEMINI API (CLOUD)                     │
 │                                                                     │
-│   • Receives: Your question + transcript context + screen text      │
+│   • Receives: Your question + screen text context                   │
 │   • Returns: AI-generated response                                  │
 │   • Uses: YOUR API key (you control usage)                          │
 │                                                                     │
@@ -109,23 +105,17 @@ This happens **automatically** - you don't need to do anything.
 
 ## Features
 
-### 1. Desktop Audio Capture & Transcription (Vosk - 100% Local)
-- Captures system audio (interviewer's voice from speakers)
-- Runs entirely on your computer - no internet required
-- Audio never leaves your machine
-- Real-time transcription with Vosk speech recognition
+### 1. Screen Capture & OCR
+- Manual screenshot (you control when)
+- Text extracted via Gemini Vision AI
+- Useful for coding questions, shared screens, documents
 
 ### 2. AI Chat (Gemini - Cloud)
-- Ask questions about your meeting/interview
+- Ask questions about your screen content
 - AI responds with context-aware answers
 - Rate-limited to prevent quota issues (4 sec cooldown)
 
-### 3. Screen Capture & OCR
-- Manual screenshot (you control when)
-- Text extracted via Gemini Vision
-- Useful for coding questions, shared screens
-
-### 4. Session Cleanup
+### 3. Session Cleanup
 - All data wiped when app closes
 - No persistent storage of conversations
 - No logs or history saved
@@ -136,27 +126,23 @@ This happens **automatically** - you don't need to do anything.
 
 ### Prerequisites
 - Node.js 18+
-- Python 3.8+
 - Gemini API key (free at https://aistudio.google.com/apikey)
 
-### Setup (Development)
+### Setup
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/ai-assistant.git
-cd ai-assistant
+git clone https://github.com/Jaydpatel01/AI-Assistant.git
+cd AI-Assistant
 
 # 2. Install dependencies
 npm install
 
-# 3. Run automated setup (creates Python env, installs Vosk, downloads model)
-npm run setup
-
-# 4. Configure API key
+# 3. Configure API key
 cp .env.example .env
 # Edit .env and add your GEMINI_API_KEY
 
-# 5. Start the app
+# 4. Start the app
 npm start
 ```
 
@@ -343,11 +329,7 @@ ai-assistant/
 │   └── ui/
 │       ├── overlay.html     # UI structure
 │       ├── overlay.css      # Styling
-│       └── overlay.js       # UI logic & audio handling
-├── scripts/
-│   └── setup.js             # Automated setup script
-├── models/                   # Vosk speech model (after setup)
-├── vosk_server.py           # Local speech recognition server
+│       └── overlay.js       # UI logic
 ├── .env.example             # API key template
 ├── .gitignore               # Security exclusions
 ├── INSTALLATION.md          # Detailed setup guide
@@ -358,11 +340,6 @@ ai-assistant/
 ---
 
 ## Troubleshooting
-
-### "Speech recognition not working"
-1. Ensure `npm run setup` completed successfully
-2. Check `models/` folder contains Vosk model
-3. Restart the app
 
 ### "API key issue"
 1. Verify `.env` file exists in project root

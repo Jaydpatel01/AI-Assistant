@@ -11,199 +11,6 @@ let overlayWindow = null;
 let isVisible = true;
 
 // ============================================
-// VOSK PROCESS MANAGEMENT (Local Speech Recognition)
-// ============================================
-
-let voskProcess = null;
-let voskProcessStarting = false;
-
-/**
- * Get Python executable path (cross-platform, works in dev and production)
- */
-function getPythonExecutable() {
-  const fs = require('fs');
-  const { execSync } = require('child_process');
-
-  // In production, check for bundled Python or system Python
-  const isPackaged = app.isPackaged;
-
-  // Check various locations in priority order
-  const possiblePaths = [];
-
-  if (isPackaged) {
-    // Production mode - check bundled venv in resources folder
-    possiblePaths.push(
-      path.join(process.resourcesPath, '.venv/Scripts/python.exe'),  // Windows bundled venv
-      path.join(process.resourcesPath, '.venv/bin/python')           // Linux/macOS bundled venv
-    );
-  } else {
-    // Development mode - check local venv first
-    possiblePaths.push(
-      path.join(__dirname, '../.venv/Scripts/python.exe'),  // Windows venv
-      path.join(__dirname, '../.venv/bin/python')           // Linux/macOS venv
-    );
-  }
-
-  // Always check system Python as fallback
-  possiblePaths.push('python', 'python3');
-
-  for (const pythonPath of possiblePaths) {
-    try {
-      // For full paths, check if file exists
-      if (path.isAbsolute(pythonPath) || pythonPath.includes('/') || pythonPath.includes('\\')) {
-        if (fs.existsSync(pythonPath)) {
-          return pythonPath;
-        }
-      } else {
-        // For 'python' or 'python3', check if it's in PATH
-        try {
-          const cmd = process.platform === 'win32' ? `where ${pythonPath}` : `which ${pythonPath}`;
-          const result = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
-          if (result.trim()) {
-            return pythonPath;  // Return the command name, spawn will find it
-          }
-        } catch (e) {
-          // Command not found, continue to next option
-        }
-      }
-    } catch (e) {
-      continue;
-    }
-  }
-
-  // Last resort - just return 'python' and hope it works
-  console.warn('⚠️ Could not find Python executable, trying "python" anyway');
-  return process.platform === 'win32' ? 'python' : 'python3';
-}
-
-/**
- * Start Vosk server process
- */
-async function startVoskProcess() {
-  if (voskProcess || voskProcessStarting) {
-    console.log('📡 Vosk server already running or starting');
-    return { success: true, message: 'Already running' };
-  }
-
-  voskProcessStarting = true;
-  console.log('📡 Starting Vosk speech recognition server...');
-
-  return new Promise((resolve) => {
-    const { spawn } = require('child_process');
-    const pythonExe = getPythonExecutable();
-
-    // Get correct paths for dev vs production
-    let scriptPath, workingDir, modelsDir;
-    if (app.isPackaged) {
-      // Production: files are in resources/app.asar.unpacked or resources
-      workingDir = path.join(process.resourcesPath, 'app.asar.unpacked');
-      scriptPath = path.join(workingDir, 'vosk_server.py');
-      modelsDir = path.join(process.resourcesPath, 'models');
-
-      // If unpacked doesn't exist, try app.asar (though Python can't run from asar)
-      if (!require('fs').existsSync(scriptPath)) {
-        // Fall back to extraResources location
-        workingDir = process.resourcesPath;
-        scriptPath = path.join(workingDir, 'vosk_server.py');
-      }
-    } else {
-      // Development mode
-      workingDir = path.join(__dirname, '..');
-      scriptPath = path.join(workingDir, 'vosk_server.py');
-      modelsDir = path.join(workingDir, 'models');
-    }
-
-    console.log(`📡 Python: ${pythonExe}`);
-    console.log(`📡 Script: ${scriptPath}`);
-    console.log(`📡 Working Dir: ${workingDir}`);
-
-    try {
-      voskProcess = spawn(pythonExe, [scriptPath], {
-        cwd: workingDir,
-        env: { ...process.env, MODELS_DIR: modelsDir },
-        stdio: ['pipe', 'pipe', 'pipe'],
-        windowsHide: true
-      });
-
-      let resolved = false;
-
-      // Handle stdout
-      voskProcess.stdout.on('data', (data) => {
-        const output = data.toString();
-        console.log(`[Vosk] ${output}`);
-
-        if (!resolved && output.includes('ready')) {
-          resolved = true;
-          voskProcessStarting = false;
-          resolve({ success: true, message: 'Vosk server started', pid: voskProcess.pid });
-        }
-      });
-
-      // Handle stderr
-      voskProcess.stderr.on('data', (data) => {
-        console.error(`[Vosk Error] ${data.toString()}`);
-      });
-
-      // Handle exit
-      voskProcess.on('exit', (code) => {
-        console.log(`🛑 Vosk process exited (code: ${code})`);
-        voskProcess = null;
-        voskProcessStarting = false;
-        if (!resolved) {
-          resolved = true;
-          resolve({ success: false, message: `Vosk exited with code ${code}` });
-        }
-      });
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          voskProcessStarting = false;
-          resolve({ success: true, message: 'Vosk server starting (timeout reached)', pid: voskProcess?.pid });
-        }
-      }, 30000);
-
-    } catch (error) {
-      voskProcessStarting = false;
-      console.error('❌ Failed to start Vosk:', error.message);
-      resolve({ success: false, message: error.message });
-    }
-  });
-}
-
-/**
- * Stop Vosk server process
- */
-async function stopVoskProcess() {
-  if (!voskProcess) {
-    console.log('📡 No Vosk process to stop');
-    return { success: true };
-  }
-
-  console.log('🛑 Stopping Vosk server...');
-
-  return new Promise((resolve) => {
-    voskProcess.on('exit', () => {
-      console.log('✅ Vosk server stopped');
-      voskProcess = null;
-      resolve({ success: true });
-    });
-
-    voskProcess.kill('SIGTERM');
-
-    // Force kill after 5 seconds
-    setTimeout(() => {
-      if (voskProcess) {
-        voskProcess.kill('SIGKILL');
-        voskProcess = null;
-      }
-      resolve({ success: true });
-    }, 5000);
-  });
-}
-
-// ============================================
 // WINDOW CREATION (Basic - No Stealth)
 // ============================================
 
@@ -235,12 +42,6 @@ function createOverlayWindow() {
 
   overlayWindow.on('closed', () => {
     overlayWindow = null;
-  });
-
-  // Auto-start Vosk when window loads
-  overlayWindow.webContents.on('did-finish-load', async () => {
-    console.log('🖥️ Overlay window loaded');
-    await startVoskProcess();
   });
 }
 
@@ -288,16 +89,6 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-
-  // Stop Vosk process
-  if (voskProcess) {
-    console.log('🧹 Cleaning up Vosk process...');
-    try {
-      voskProcess.kill('SIGTERM');
-    } catch (e) {
-      // Ignore errors
-    }
-  }
 
   // ============================================
   // SESSION DATA WIPE (Privacy & Cleanup)
@@ -471,27 +262,6 @@ ipcMain.handle('get-screen-sources', async () => {
     console.error('Error getting screen sources:', error);
     throw error;
   }
-});
-
-// ============================================
-// VOSK IPC HANDLERS
-// ============================================
-
-ipcMain.handle('vosk-start', async () => {
-  console.log('📡 IPC: vosk-start requested');
-  return await startVoskProcess();
-});
-
-ipcMain.handle('vosk-stop', async () => {
-  console.log('📡 IPC: vosk-stop requested');
-  return await stopVoskProcess();
-});
-
-ipcMain.handle('vosk-status', async () => {
-  return {
-    isRunning: voskProcess !== null,
-    pid: voskProcess?.pid || null
-  };
 });
 
 console.log('🎯 AI Assistant starting...');
