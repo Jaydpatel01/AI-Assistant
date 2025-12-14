@@ -12,10 +12,10 @@
     "build:linux": "electron-builder --linux"
   },
   "keywords": [
-    "meeting",
     "assistant",
     "ai",
-    "transcription",
+    "screen-capture",
+    "ocr",
     "open-source"
   ],
   "author": "Jay Patel",

@@ -253,7 +253,7 @@ async function captureScreen() {
 // ============================================
 
 async function getQuickAnswer() {
-  // Use screen context only (audio capture removed)
+  // Use screen context only
   const hasScreen = appState.screenContext && appState.screenContext.trim().length > 0;
 
   console.log(`📋 Context check: hasScreen=${hasScreen}`);

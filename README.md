@@ -40,21 +40,16 @@ An open-source AI-powered assistant that provides intelligent answers using scre
 
 ## Data Flow & Privacy
 
-### What Stays LOCAL (Never Leaves Your Computer)
-
+### What Stays LOCAL (Your Computer)
 | Data | Where Stored | When Deleted |
 |------|--------------|--------------|
-| Desktop audio (system sound) | Memory only | When you stop recording |
-| Voice transcription | Memory only | When app closes |
 | Screenshots | Memory only | After text extraction |
 | App settings | Local config | When you delete them |
 
-### What Goes to the CLOUD (Google's Servers)
-
+### What Goes to CLOUD (Google's Servers)
 | Data | When Sent | Purpose |
 |------|-----------|---------|
 | Your typed questions | When you ask | To get AI response |
-| Recent transcript text | With questions | For context |
 | Screenshot text (OCR) | When you capture screen | To extract text & provide context |
 
 > **🔒 PII Protection**: Before ANY data is sent to the cloud, it passes through our PII masking system.
@@ -63,25 +58,15 @@ An open-source AI-powered assistant that provides intelligent answers using scre
 
 The app automatically redacts sensitive information before sending to Google's API:
 
-| PII Type | Example | Becomes |
-|----------|---------|---------|
-| Email addresses | john@email.com | `[EMAIL]` |
+| Pattern | Example | Masked As |
+|---------|---------|-----------|
+| Email addresses | john@company.com | `[EMAIL]` |
 | Phone numbers | +1-555-123-4567 | `[PHONE]` |
-| Credit cards | 4111-1111-1111-1111 | `[CARD]` |
-| SSN (US) | 123-45-6789 | `[SSN]` |
-| Aadhaar (India) | 1234 5678 9012 | `[AADHAAR]` |
-| PAN (India) | ABCDE1234F | `[PAN]` |
-| IP addresses | 192.168.1.1 | `[IP]` |
+| SSN | 123-45-6789 | `[SSN]` |
+| Credit cards | 4111-1111-1111-1111 | `[CC]` |
+| IP addresses | 192.168.1.100 | `[IP]` |
 | API keys | sk-abc123... | `[API_KEY]` |
-
-This happens **automatically** - you don't need to do anything.
-
-### API Key Usage
-
-- **Your API key** is stored in `.env` file on your computer
-- **Never committed** to version control (blocked by .gitignore)
-- **You control** all API usage and costs
-- **Google sees** your queries in their API dashboard (with PII masked)
+| URLs with tokens | https://site.com?token=xxx | `[URL_WITH_TOKEN]` |
 
 ---
 
@@ -94,9 +79,9 @@ This happens **automatically** - you don't need to do anything.
 | **Linux** | ⚠️ Experimental (should work, not fully tested) |
 
 **Tips for macOS/Linux users:**
-- Use `python3` instead of `python` if the setup fails
-- Run `chmod +x .venv/bin/python` if you get permission errors
-- For audio capture issues, ensure your system allows screen/audio recording permissions
+- Use `python3` instead of `python` if issues arise
+- Run `chmod +x` on scripts if you get permission errors
+- Ensure your system allows screen recording permissions
 - Build with `npm run build:mac` or `npm run build:linux`
 
 > **Note:** Full macOS and Linux support coming soon! If you encounter issues, please open a GitHub issue.
@@ -113,9 +98,14 @@ This happens **automatically** - you don't need to do anything.
 ### 2. AI Chat (Gemini - Cloud)
 - Ask questions about your screen content
 - AI responds with context-aware answers
-- Rate-limited to prevent quota issues (4 sec cooldown)
+- Rate-limited to prevent quota issues
 
-### 3. Session Cleanup
+### 3. Stealth Mode
+- Toggle visibility in screen shares
+- Overlay stays on top of other windows
+- Drag to reposition anywhere
+
+### 4. Session Cleanup
 - All data wiped when app closes
 - No persistent storage of conversations
 - No logs or history saved
@@ -149,13 +139,13 @@ npm start
 ### Building for Production
 
 ```bash
-# Build the distributable app (this takes some time - be patient!)
+# Build the app (be patient, this takes some time)
 npm run build
 ```
 
 After building:
 1. **App location:** `dist/win-unpacked/AI Assistant.exe`
-2. **Installer:** `dist/AI Assistant-1.0.0.exe` (Ignore this and run AI Assistant.exe)
+2. **Installer:** `dist/AI Assistant-1.0.0.exe`
 3. **Important:** Copy your `.env` file to `dist/win-unpacked/` folder
 
 ---
@@ -165,156 +155,37 @@ After building:
 ### Quick Start Workflow
 
 1. **Launch**: Run `npm start`
-2. **Capture Audio**: Click "Capture Audio" button to start capturing desktop/system audio
-3. **Listen**: The app transcribes what plays through your speakers (interviewer's voice)
-4. **Get Answers**: Click "Answer" or type questions to get AI-powered responses
-5. **End**: Click "Stop Capture" or close app (data auto-wipes)
+2. **Capture Screen**: Click "Use Screen" to capture and analyze screen content
+3. **Ask Questions**: Type questions or click "Answer" for AI responses
+4. **End**: Close the app (data auto-wipes)
 
-### Tips
-
-- **Move the Overlay**: Click and hold anywhere on the top toolbar (not on buttons), then drag to reposition the overlay window.
-- **Use Both Modes**: For best results, use "Capture Audio" for real-time transcription AND "Use Screen" for visual context. They work independently - the AI uses whichever is most relevant based on your current mode.
-
----
-
-### Detailed Usage Guide
-
-#### Starting Audio Capture
-1. Click **"Capture Audio"** to begin transcription
-2. The app captures desktop audio (what plays through your speakers)
-3. Interviewer's voice is transcribed in real-time
-4. Use this during video calls to capture what the interviewer says
-
-#### Asking Questions to AI
-1. Type your question in the chat input at the bottom
-2. Press **Enter** or click the **Send** button
-3. AI responds using context from:
-   - Your recent transcript (last 10 entries)
-   - Screenshot text (if captured)
-4. Wait 4 seconds between questions (rate limit protection)
-
-#### Using Screen Capture
-1. Click **"Use Screen"** to capture your screen
-2. The app extracts all visible text via OCR
-3. This text is automatically added to context
-4. Future AI questions will reference this screen content
-5. **Tip**: Capture coding problems, shared documents, or interview questions
-
-#### Ending Session
-1. Click **"End Meeting"** or simply close the app
-2. All session data is automatically wiped:
-   - Transcript cleared
-   - Screen context cleared
-   - No files saved to disk
-
----
-
-### Best Practices
-
-#### For Interviews
-| Tip | Why |
-|-----|-----|
-| Position mic close to speakers | Better capture of interviewer's voice |
-| Capture coding problems with screenshot | AI can help with solutions |
-| Ask specific questions | "What's the time complexity?" vs "Help" |
-| Wait for complete questions | Don't ask mid-sentence |
-
-#### For Meetings
-| Tip | Why |
-|-----|-----|
-| Start transcription at beginning | Captures full context |
-| Screenshot important slides | Preserves visual context |
-| Ask for summaries at end | "Summarize key action items" |
-
-#### For Efficiency
-| Action | Benefit |
-|--------|---------|
-| Use short, clear questions | Faster responses |
-| Capture screens with text | Better AI context |
-| Don't spam requests | Avoid rate limits |
-| Close other mic apps | Cleaner audio capture |
-
----
-
-### Example Questions You Can Ask
-
-| Context | Example Question |
-|---------|------------------|
-| During interview | "How should I answer this behavioral question?" |
-| Coding problem | "What's the optimal approach for this algorithm?" |
-| Technical discussion | "Explain this concept in simpler terms" |
-| Meeting notes | "Summarize what was discussed about the deadline" |
-| With screenshot | "What's the answer to this question on screen?" |
-
----
-
-### What the AI Knows
-
-The AI has access to:
-- ✅ Your last 10 transcript entries
-- ✅ Text from your latest screenshot
-- ✅ Your current question
-
-The AI does NOT know:
-- ❌ Previous conversations (session-only)
-- ❌ Your files or system
-- ❌ Anything not captured by mic/screenshot
-
----
-
-## Keyboard Shortcuts
+### Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+Shift+O` | Toggle overlay back after minizing |
+| `Ctrl+Shift+O` | Toggle overlay visibility |
 
----
+### Using Screen Capture
 
-## Configuration
+1. Click **"Use Screen"** to take a screenshot
+2. The app extracts text via Gemini Vision OCR
+3. This context is used when you ask questions
+4. Click "Answer" with screen context for best results
 
-### .env File Options
+### Using AI Chat
 
-```env
-# Required: Your Gemini API key
-GEMINI_API_KEY=your_key_here
+1. Type your question in the input box
+2. Press **Enter** or click **Send**
+3. The AI responds using your screen context (if available)
 
-# Optional: Model name (default: gemini-2.5-flash-lite)
-GEMINI_MODEL=gemini-2.5-flash-lite
-```
+### Best Practices
 
----
-
-## Rate Limits
-
-The app includes built-in rate limiting to prevent API errors:
-
-| Limit | Value |
-|-------|-------|
-| Minimum time between requests | 4 seconds |
-| Auto-increase on 429 error | Yes (up to 10 sec) |
-| Visual feedback | Shows countdown in chat |
-
-### Gemini Free Tier Limits
-- 15 requests per minute
-- 1,500 requests per day
-- More than enough for normal use
-
----
-
-## Security
-
-### What We Do
-- ✅ API keys stored locally only
-- ✅ .gitignore blocks all sensitive files
-- ✅ Session data cleared on close
-- ✅ No analytics or tracking
-- ✅ No data collection by the app
-
-### What You Should Know
-- ⚠️ Your queries go to Google's Gemini API
-- ⚠️ Google can see your API usage
-- ⚠️ Keep your .env file private
-- ⚠️ Don't share your API key
+| Tip | Why |
+|-----|-----|
+| Capture relevant screens | Gives AI better context |
+| Be specific in questions | Get more accurate answers |
+| Use stealth mode when needed | Privacy in screen sharing |
+| Wait between requests | Avoid rate limits |
 
 ---
 
@@ -326,6 +197,8 @@ ai-assistant/
 │   ├── main.js              # Electron main process
 │   ├── services/
 │   │   └── ai-service.js    # Gemini API integration
+│   ├── utils/
+│   │   └── pii-mask.js      # PII masking utility
 │   └── ui/
 │       ├── overlay.html     # UI structure
 │       ├── overlay.css      # Styling
@@ -333,6 +206,7 @@ ai-assistant/
 ├── .env.example             # API key template
 ├── .gitignore               # Security exclusions
 ├── INSTALLATION.md          # Detailed setup guide
+├── PREMIUM.md               # Premium features comparison
 ├── LICENSE                  # MIT License
 └── package.json             # Dependencies & scripts
 ```
@@ -347,27 +221,82 @@ ai-assistant/
 3. Ensure key is valid at https://aistudio.google.com
 
 ### "Rate limit reached"
-- Wait a few seconds before next request
-- The app auto-handles this with cooldowns
+- Free tier is limited to ~20 requests/day (as of Dec 2025)
+- Wait for quota reset (usually 24 hours)
+- Consider creating a new API key
 
-### "No microphone found"
-- Check your microphone is connected
-- Allow microphone access when prompted
-- Close other apps using the microphone
+### Screen capture not working
+- Allow screen sharing permissions when prompted
+- Try restarting the app
+- Check if other apps are blocking screen capture
+
+### App not starting
+1. Ensure Node.js 18+ is installed (`node --version`)
+2. Run `npm install` to ensure dependencies are installed
+3. Check the `.env` file exists and has a valid API key
+
+---
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GEMINI_API_KEY` | Yes | Your Google Gemini API key |
+| `GEMINI_MODEL` | No | Model to use (default: `gemini-2.5-flash-lite`) |
+
+### Getting an API Key
+
+1. Visit [Google AI Studio](https://aistudio.google.com/apikey)
+2. Sign in with your Google account
+3. Click "Create API Key"
+4. Copy the key to your `.env` file
+
+> **Note:** Free tier has limited requests per day. Check your usage at https://ai.dev/usage
+
+---
+
+## Security Considerations
+
+### What We Do
+- ✅ PII masking before any cloud requests
+- ✅ Session data wipes on close
+- ✅ No persistent storage of conversations
+- ✅ Your API key stays local
+
+### Your Responsibility
+- 🔐 Never share your `.env` file
+- 🔐 Don't expose your API key publicly
+- 🔐 Review what's on screen before capturing
+- 🔐 Use stealth mode in sensitive situations
+
+### Privacy Summary
+The app does not store, share, or sell any user data. All processing is session-based and wiped on close. Only the minimum necessary data (with PII masked) is sent to Google's API for AI responses.
+
+---
+
+## Contributing
+
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ---
 
 ## License
 
-MIT License - Free for personal and commercial use.
+MIT License - See [LICENSE](LICENSE) file for details.
+
+**⚠️ This software is provided AS-IS. The authors accept NO responsibility for any consequences of use.**
 
 ---
 
 ## Disclaimer
 
-This is an open-source tool for educational purposes. Users are responsible for:
+This software is for **personal educational use only**. Users are responsible for:
+- Complying with all applicable laws
 - Their own API key usage and costs
-- Compliance with their organization's policies
-- Appropriate use during meetings/interviews
-
-The app does not store, share, or sell any user data.
+- Appropriate use of the tool
